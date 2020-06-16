@@ -1,0 +1,98 @@
+﻿@layout BlazorIdentity.Identity.Pages.Manage._Layout
+
+@page "/Identity/Manage/Disable2fa"
+
+@using BlazorIdentity.Identity;
+@using Microsoft.AspNetCore.Authentication;
+@using Microsoft.AspNetCore.Http;
+@using Microsoft.AspNetCore.Identity;
+@using Microsoft.Extensions.Logging;
+@using Microsoft.AspNetCore.WebUtilities;
+@using System.ComponentModel.DataAnnotations;
+@using System.Text;
+
+@inject UserManager<IdentityUser> _userManager;
+@inject NavigationManager NavigationManager;
+@inject SignInManager<IdentityUser> _signInManager;
+@inject ILogger<Identity.Pages.Login> _logger;
+@inject IHttpContextAccessor httpContextAccessor;
+
+<AuthorizeView Context="authContext">
+    <Authorized>
+        <StatusMessage Message="@StatusMessage"></StatusMessage>
+
+        <h2>Disable two-factor authentication (2FA)</h2>
+
+        <div class="alert alert-warning" role="alert">
+            <p>
+                <strong>This action only disables 2FA.</strong>
+            </p>
+            <p>
+                Disabling 2FA does not change the keys used in authenticator apps. If you wish to change the key
+                used in an authenticator app you should <a href="Identity/Manage/ResetAuthenticator">reset your authenticator keys.</a>
+            </p>
+        </div>
+
+        <div class="row">
+            <EditForm EditContext="editContext" OnSubmit="OnSubmit">
+                <DataAnnotationsValidator />
+                <ValidationSummary />
+                <button class="btn btn-danger" type="submit">Disable 2FA</button>
+            </EditForm>
+        </div>
+    </Authorized>
+    <NotAuthorized>
+        <h1>Authentication Failure!</h1>
+        <p>You're not signed in.</p>
+    </NotAuthorized>
+</AuthorizeView>
+
+@code {
+    public string StatusMessage { get; set; }
+
+    public EditContext editContext { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var user = await _userManager.GetUserAsync(httpContextAccessor.HttpContext.User);
+
+        if (user == null)
+        {
+            StatusMessage = $"Unable to load user with ID '{_userManager.GetUserId(httpContextAccessor.HttpContext.User)}'.";
+        }
+        else
+        {
+            if (!await _userManager.GetTwoFactorEnabledAsync(user))
+            {
+                StatusMessage = $"Cannot disable 2FA for user with ID '{_userManager.GetUserId(httpContextAccessor.HttpContext.User)}' as it's not currently enabled.";
+            }
+        }
+
+        editContext = new EditContext(null);
+    }
+
+    private async void OnSubmit(EditContext editContext)
+    {
+        var user = await _userManager.GetUserAsync(httpContextAccessor.HttpContext.User);
+        if (user == null)
+        {
+            StatusMessage = $"Unable to load user with ID '{_userManager.GetUserId(httpContextAccessor.HttpContext.User)}'.";
+        }
+        else
+        {
+            var disable2faResult = await _userManager.SetTwoFactorEnabledAsync(user, false);
+            if (!disable2faResult.Succeeded)
+            {
+                StatusMessage = $"Unexpected error occurred disabling 2FA for user with ID '{_userManager.GetUserId(httpContextAccessor.HttpContext.User)}'.";
+            }
+            else
+            {
+                _logger.LogInformation("User with ID '{UserId}' has disabled 2fa.", _userManager.GetUserId(httpContextAccessor.HttpContext.User));
+                StatusMessage = "2fa has been disabled. You can reenable 2fa when you setup an authenticator app";
+
+                NavigationManager.NavigateTo("/Identity/Manage/TwoFactorAuthentication");
+                return;
+            }
+        }
+    }
+}

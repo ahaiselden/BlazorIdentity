@@ -1,0 +1,69 @@
+﻿@page "/Identity/RegisterConfirmation/{Email}"
+
+@using Microsoft.AspNetCore.Identity;
+@using Microsoft.AspNetCore.WebUtilities;
+@using System.ComponentModel.DataAnnotations;
+@using System.Text;
+@using System.Text.Encodings.Web;
+
+@inject UserManager<IdentityUser> _userManager;
+@inject NavigationManager NavigationManager;
+@inject Microsoft.AspNetCore.Identity.UI.Services.IEmailSender _emailSender;
+
+<title>Register confirmation</title>
+
+<h3>Register confirmation</h3>
+
+@if (DisplayConfirmAccountLink)
+{
+    <p>
+        This app does not currently have a real email sender registered, see <a href="https://aka.ms/aspaccountconf">these docs</a> for how to configure a real email sender.
+        Normally this would be emailed: <a id="confirm-link" href="@EmailConfirmationUrl">Click here to confirm your account</a>
+    </p>
+}
+else
+{
+    <p>
+        Please check your email to confirm your account.
+    </p>
+}
+
+
+@code {
+    [Parameter]
+    public string Email { get; set; }
+
+    private bool DisplayConfirmAccountLink { get; set; }
+
+    private string EmailConfirmationUrl { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Email == null)
+        {
+            NavigationManager.NavigateTo("/Index");
+            return;
+        }
+
+        var user = await _userManager.FindByEmailAsync(Email);
+
+        if (user == null)
+        {
+            // TODO do something with message
+            //// NotFound($"Unable to load user with email '{email}'.");
+            return;
+        }
+
+        // Once you add a real email sender, you should remove this code that lets you confirm the account
+        DisplayConfirmAccountLink = true;
+
+        if (DisplayConfirmAccountLink)
+        {
+            var userId = await _userManager.GetUserIdAsync(user);
+            var code = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+            code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(code));
+
+            EmailConfirmationUrl = $"{NavigationManager.BaseUri}Identity/Account/ConfirmEmail/{userId}/{code}";
+        }
+    }
+}

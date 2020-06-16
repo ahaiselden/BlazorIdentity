@@ -1,0 +1,69 @@
+﻿@page "/Identity/ConfirmEmailChange/{UserId}/{Email}/{Code}"
+
+@using Microsoft.AspNetCore.Identity;
+@using Microsoft.AspNetCore.WebUtilities;
+@using System.Text;
+
+@inject UserManager<IdentityUser> _userManager;
+@inject SignInManager<IdentityUser> _signInManager;
+@inject NavigationManager NavigationManager;
+
+<title>Confirm email change</title>
+
+<h3>Confirm email change</h3>
+
+<StatusMessage Message="@StatusMessage"></StatusMessage>
+
+@code {
+    public string StatusMessage { get; set; }
+
+    [Parameter]
+    public string UserId { get; set; }
+
+    [Parameter]
+    public string Email { get; set; }
+
+    [Parameter]
+    public string Code { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (UserId is null || Email is null || Code is null)
+        {
+            NavigationManager.NavigateTo("/Index");
+            return;
+        }
+        else
+        {
+            var user = await _userManager.FindByIdAsync(UserId);
+            if (user is null)
+            {
+                StatusMessage = $"Unable to load user with ID '{UserId}'.";
+                return;
+            }
+            else
+            {
+                Code = Encoding.UTF8.GetString(WebEncoders.Base64UrlDecode(Code));
+                var result = await _userManager.ChangeEmailAsync(user, Email, Code);
+                if (!result.Succeeded)
+                {
+                    StatusMessage = "Error changing email.";
+                    return;
+                }
+
+                // In our UI email and user name are one and the same, so when we update the email
+                // we need to update the user name.
+                var setUserNameResult = await _userManager.SetUserNameAsync(user, Email);
+                if (!setUserNameResult.Succeeded)
+                {
+                    StatusMessage = "Error changing user name.";
+                    return;
+                }
+
+                await _signInManager.RefreshSignInAsync(user);
+                StatusMessage = "Thank you for confirming your email change.";
+                return;
+            }
+        }
+    }
+}

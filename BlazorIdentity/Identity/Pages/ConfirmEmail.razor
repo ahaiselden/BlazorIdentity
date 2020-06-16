@@ -1,0 +1,48 @@
+﻿@page "/Identity/ConfirmEmail/{UserId}/{Code}"
+
+@using Microsoft.AspNetCore.Identity;
+@using Microsoft.AspNetCore.WebUtilities;
+@using System.Text;
+
+@inject UserManager<IdentityUser> _userManager;
+@inject NavigationManager NavigationManager;
+
+<title>Confirm Email</title>
+
+<h3>Confirm Email</h3>
+
+<StatusMessage Message="@StatusMessage"></StatusMessage>
+
+@code {
+    public string StatusMessage { get; set; }
+
+    [Parameter]
+    public string UserId { get; set; }
+
+    [Parameter]
+    public string Code { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (UserId is null || Code is null)
+        {
+            NavigationManager.NavigateTo("/Index");
+            return;
+        }
+        else
+        {
+            var user = await _userManager.FindByIdAsync(UserId);
+            if (user == null)
+            {
+                StatusMessage = $"Unable to load user with ID '{UserId}'.";
+                return;
+            }
+            else
+            {
+                Code = Encoding.UTF8.GetString(WebEncoders.Base64UrlDecode(Code));
+                var result = await _userManager.ConfirmEmailAsync(user, Code);
+                StatusMessage = result.Succeeded ? "Thank you for confirming your email." : "Error confirming your email.";
+            }
+        }
+    }
+}

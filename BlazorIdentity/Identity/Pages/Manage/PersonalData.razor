@@ -1,0 +1,73 @@
+﻿@layout BlazorIdentity.Identity.Pages.Manage._Layout
+
+@page "/Identity/Manage/PersonalData"
+
+@using BlazorIdentity.Identity;
+@using Microsoft.AspNetCore.Authentication;
+@using Microsoft.AspNetCore.Http;
+@using Microsoft.AspNetCore.Identity;
+@using Microsoft.Extensions.Logging;
+@using Microsoft.AspNetCore.WebUtilities;
+@using System.ComponentModel.DataAnnotations;
+@using System.Text;
+
+@inject UserManager<IdentityUser> _userManager;
+@inject NavigationManager NavigationManager;
+@inject SignInManager<IdentityUser> _signInManager;
+@inject ILogger<Identity.Pages.Login> _logger;
+@inject IHttpContextAccessor httpContextAccessor;
+
+<AuthorizeView Context="authContext">
+    <Authorized>
+
+        <StatusMessage Message="@StatusMessage"></StatusMessage>
+
+        <div class="row">
+            <div class="col-md-6">
+                <EditForm EditContext="editContext" OnSubmit="OnSubmit">
+                    <DataAnnotationsValidator />
+                    <ValidationSummary />
+
+
+
+                </EditForm>
+            </div>
+        </div>
+    </Authorized>
+    <NotAuthorized>
+        <h1>Authentication Failure!</h1>
+        <p>You're not signed in.</p>
+    </NotAuthorized>
+</AuthorizeView>
+
+@code {
+    public string StatusMessage { get; set; }
+
+    public EditContext editContext { get; set; }
+
+    public InputModel inputModel { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        editContext = new EditContext(inputModel);
+    }
+
+    private async void OnSubmit(EditContext editContext)
+    {
+        if (!editContext.Validate())
+        {
+
+        }
+        else
+        {
+
+        }
+
+        editContext = new EditContext(inputModel);
+    }
+
+    public class InputModel
+    {
+
+    }
+}

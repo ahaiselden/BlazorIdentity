@@ -1,0 +1,48 @@
+﻿@layout BlazorIdentity.Identity.Pages.Manage._Layout
+
+@page "/Identity/Manage/DownloadPersonalData"
+
+@using BlazorIdentity.Identity;
+@using Microsoft.AspNetCore.Authentication;
+@using Microsoft.AspNetCore.Http;
+@using Microsoft.AspNetCore.Identity;
+@using Microsoft.Extensions.Logging;
+@using Microsoft.AspNetCore.WebUtilities;
+@using System.ComponentModel.DataAnnotations;
+@using System.Text;
+@using System.Text.Json;
+
+@inject UserManager<IdentityUser> _userManager;
+@inject NavigationManager NavigationManager;
+@inject SignInManager<IdentityUser> _signInManager;
+@inject ILogger<Identity.Pages.Login> _logger;
+@inject IHttpContextAccessor httpContextAccessor;
+
+<AuthorizeView Context="authContext">
+    <Authorized>
+        <StatusMessage Message="@StatusMessage"></StatusMessage>
+
+        <h4>Download Your Data</h4>
+
+        <div class="row">
+            <div class="col-md-6">
+                <a class="btn btn-danger" href="identity/manage/downloadpersonaldata">Download personal data</a>
+            </div>
+        </div>
+    </Authorized>
+    <NotAuthorized>
+        <h1>Authentication Failure!</h1>
+        <p>You're not signed in.</p>
+    </NotAuthorized>
+</AuthorizeView>
+
+@code {
+    public string StatusMessage { get; set; }
+
+    public EditContext editContext { get; set; }
+
+    protected override void OnInitialized()
+    {
+        editContext = new EditContext(null);
+    }
+}

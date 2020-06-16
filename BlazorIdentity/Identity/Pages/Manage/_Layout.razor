@@ -1,0 +1,24 @@
+﻿@inherits LayoutComponentBase
+@layout MainLayout
+
+<h2>Manage your account</h2>
+
+<div>
+    <h4>Change your account settings</h4>
+    <hr />
+    <div class="row">
+        @* // TODO Cascading Parameter for 'active' css class? *@
+        <div class="col-md-3">
+            <ul class="nav nav-pills flex-column">
+                <li class="nav-item"><a class="nav-link" id="profile" href="Identity/Manage/Index">Profile</a></li>
+                <li class="nav-item"><a class="nav-link" id="email" href="Identity/Manage/Email">Email</a></li>
+                <li class="nav-item"><a class="nav-link" id="change-password" href="Identity/Manage/ChangePassword">Password</a></li>
+                <li class="nav-item"><a class="nav-link" id="two-factor" href="Identity/Manage/TwoFactorAuthentication">Two-factor authentication</a></li>
+                <li class="nav-item"><a class="nav-link" id="personal-data" href="Identity/Manage/PersonalData">Personal data</a></li>
+            </ul>
+        </div>
+        <div class="col-md-9">
+            @Body
+        </div>
+    </div>
+</div>

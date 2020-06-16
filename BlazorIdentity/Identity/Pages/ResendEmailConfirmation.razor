@@ -1,0 +1,79 @@
+﻿@page "/Identity/ResendEmailConfirmation"
+
+@using Microsoft.AspNetCore.Identity;
+@using Microsoft.AspNetCore.WebUtilities;
+@using System.ComponentModel.DataAnnotations;
+@using System.Text;
+@using System.Text.Encodings.Web; 
+
+@inject UserManager<IdentityUser> _userManager;
+@inject NavigationManager NavigationManager;
+@inject Microsoft.AspNetCore.Identity.UI.Services.IEmailSender _emailSender;
+
+<title>Resend email confirmation</title>
+
+<h3>Resend email confirmation</h3>
+<hr />
+<div class="row">
+    <div class="col-md-4">
+        <EditForm EditContext="resendEmailConfirmationContext" OnSubmit="OnResendEmailConfirmationSubmit">
+            <DataAnnotationsValidator />
+            <ValidationSummary />
+            <div class="form-group">
+                Email
+                <InputText class="form-control" @bind-Value="inputModel.Email"></InputText>
+                <ValidationMessage For="@(() => inputModel.Email)" />
+            </div>
+            <button type="submit" class="btn btn-primary">Resend</button>
+        </EditForm>
+    </div>
+</div>
+
+@code {
+    public EditContext resendEmailConfirmationContext { get; set; }
+
+    private InputModel inputModel { get; set; }
+
+    protected override void OnInitialized()
+    {
+        resendEmailConfirmationContext = new EditContext(resendEmailConfirmationContext);
+    }
+
+    private async void OnResendEmailConfirmationSubmit(EditContext editContext)
+    {
+        if (editContext.Validate())
+        {
+            var user = await _userManager.FindByEmailAsync(inputModel.Email);
+            if (user == null)
+            {
+                // TODO something with message
+                // ModelState.AddModelError(string.Empty, "Verification email sent. Please check your email.");
+                return;
+            }
+
+            var userId = await _userManager.GetUserIdAsync(user);
+            var code = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+            code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(code));
+
+            var callbackUrl = $"{NavigationManager.BaseUri}Identity/Account/ConfirmEmail/{userId}/{code}";
+
+            await _emailSender.SendEmailAsync(
+                inputModel.Email,
+                "Confirm your email",
+                $"Please confirm your account by <a href='{HtmlEncoder.Default.Encode(callbackUrl)}'>clicking here</a>.");
+
+            // TODO something with message
+            // ModelState.AddModelError(string.Empty, "Verification email sent. Please check your email.");
+        }
+
+        editContext = new EditContext(resendEmailConfirmationContext);
+        StateHasChanged();
+    }
+
+    public class InputModel
+    {
+        [Required]
+        [EmailAddress]
+        public string Email { get; set; }
+    }
+}

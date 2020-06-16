@@ -1,0 +1,118 @@
+﻿@page "/Identity/Login"
+@page "/Identity/Login/{Failed}"
+
+@using Microsoft.AspNetCore.Authentication;
+@using Microsoft.AspNetCore.Http;
+@using Microsoft.AspNetCore.Identity;
+@using Microsoft.Extensions.Logging;
+@using Microsoft.AspNetCore.WebUtilities;
+@using System.ComponentModel.DataAnnotations;
+@using System.Text;
+
+@inject UserManager<IdentityUser> _userManager;
+@inject NavigationManager NavigationManager;
+@inject SignInManager<IdentityUser> _signInManager;
+@inject ILogger<Identity.Pages.Login> _logger;
+@inject IHttpContextAccessor httpContextAccessor;
+
+<title>Log in</title>
+
+<h3>Log in</h3>
+
+@if (inputModel == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <div class="row">
+        <div class="col-md-4">
+            <section>
+                <form method="post" action="/Identity/LogIn">
+                    <h4>Use a local account to log in.</h4>
+                    <hr />
+                    <div class="form-group">
+                        Email
+                        <input type="text" class="form-control" name="username" @bind="inputModel.Email" />
+                        @*<ValidationMessage For="@(() => inputModel.Email)" />*@
+                    </div>
+                    <div class="form-group">
+                        Password
+                        <input type="password" class="form-control" name="password" @bind="inputModel.Password" />
+                        @*<ValidationMessage For="@(() => inputModel.Password)" />*@
+                    </div>
+                    @if (Failed == "Failed")
+                    {
+                        <div class="text-danger validation-summary-errors">
+                            <ul>
+                                <li>Invalid login attempt.</li>
+                            </ul>
+                        </div>
+                    }
+                    <div class="form-group">
+                        <button type="submit" class="btn btn-primary">Log in</button>
+                    </div>
+                    <div class="form-group">
+                        <p>
+                            <a id="forgot-password" href="/Identity/ForgotPassword">Forgot your password?</a>
+                        </p>
+                        <p>
+                            <a href="/Identity/Register">Register as a new user</a>
+                        </p>
+                        <p>
+                            <a id="resend-confirmation" href="/Identity/ResendEmailConfirmation">Resend email confirmation</a>
+                        </p>
+                    </div>
+                </form>
+            </section>
+        </div>
+    </div>
+}
+
+@code {
+    private string ErrorMessage { get; set; }
+
+    private IList<AuthenticationScheme> ExternalLogins { get; set; }
+
+    [Parameter]
+    public string Failed { get; set; }
+
+    private InputModel inputModel { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            inputModel = new InputModel();
+
+            ExternalLogins = (await _signInManager.GetExternalAuthenticationSchemesAsync()).ToList();
+
+            // Clear the existing external cookie to ensure a clean login process
+            await httpContextAccessor.HttpContext.SignOutAsync(IdentityConstants.ExternalScheme);
+        }
+        catch (Exception exception)
+        {
+
+        }
+    }
+
+    private void OnExternalLoginClick(string providerName)
+    {
+        NavigationManager.NavigateTo($"/Identity/ExternalLogin/{providerName}");
+        return;
+    }
+
+    public class InputModel
+    {
+        [Required]
+        [EmailAddress]
+        public string Email { get; set; }
+
+        [Required]
+        [DataType(DataType.Password)]
+        public string Password { get; set; }
+
+        [Display(Name = "Remember me?")]
+        public bool RememberMe { get; set; }
+    }
+}
