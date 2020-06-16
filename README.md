@@ -1,4 +1,4 @@
-# BlazorIdentity
+# Blazor Identity
 
 Microsoft Identity MVC pages (.cshtml, cs), refactored to Blazor (.razor) components (primarily so that they will more easily conform to the styles and layout of the Blazor application, and remove the need for jquery for validation.)
 
