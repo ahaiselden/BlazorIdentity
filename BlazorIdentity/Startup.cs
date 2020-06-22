@@ -17,6 +17,9 @@ using BlazorIdentity.Areas.Identity;
 using BlazorIdentity.Data;
 using BlazorIdentity.Pages.Identity;
 using Microsoft.Extensions.Logging;
+using System.Net.Http;
+using System.Net.Http.Headers;
+using System.Net;
 
 namespace BlazorIdentity
 {
@@ -44,6 +47,21 @@ namespace BlazorIdentity
             {
                 options.AddConsole();
             });
+            // Server Side Blazor doesn't register HttpClient by default
+            
+            if (!services.Any(x => x.ServiceType == typeof(HttpClient)))
+            {
+                // Setup HttpClient for server side in a client side compatible fashion
+                services.AddScoped<HttpClient>(s =>
+                {
+                    // Creating the URI helper needs to wait until the JS Runtime is initialized, so defer it.      
+                    var uriHelper = s.GetRequiredService<NavigationManager>();
+                    return new HttpClient
+                    {
+                        BaseAddress = new Uri(uriHelper.BaseUri)
+                    };
+                });
+            }
 
             services.AddRazorPages();
             services.AddServerSideBlazor();

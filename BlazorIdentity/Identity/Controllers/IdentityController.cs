@@ -30,7 +30,7 @@ namespace BlazorIdentity.Identity.Controllers
         public async Task<IActionResult> Signin([FromForm] string username, [FromForm] string password)
         {
             var result = await signInManager.PasswordSignInAsync(username, password, true, lockoutOnFailure: true);
-            
+
             if (result.Succeeded)
             {
                 return Redirect("/");
@@ -46,7 +46,7 @@ namespace BlazorIdentity.Identity.Controllers
                 return Redirect("/Identity/Lockout");
             }
 
-            return Redirect("/Identity/Login/Failed");  
+            return Redirect("/Identity/Login/Failed");
         }
 
         [HttpPost("Identity/LogOut")]
@@ -56,11 +56,27 @@ namespace BlazorIdentity.Identity.Controllers
             return Redirect("/");
         }
 
+        [HttpGet("Identity/LogOut")]
+        public async Task LogOut()
+        {
+            await signInManager.SignOutAsync();
+        }
+
+
         [Authorize]
-        [HttpGet("Identity/Manage/DownloadPersonalData")]
-        public async Task<IActionResult> DownloadPersonalData()
+        [HttpGet("Identity/Manage/RefreshSignIn")]
+        public async Task RefreshSignIn()
         {
             var user = await userManager.GetUserAsync(User);
+            await signInManager.RefreshSignInAsync(user);
+        }
+
+
+        [Authorize]
+        [HttpGet("Identity/Manage/DownloadPersonalData")]
+        public ActionResult DownloadPersonalData()
+        {
+            var user = userManager.GetUserAsync(User).Result;
             if (user == null)
             {
                 return NotFound($"Unable to load user with ID '{userManager.GetUserId(User)}'.");
@@ -77,14 +93,15 @@ namespace BlazorIdentity.Identity.Controllers
                 personalData.Add(p.Name, p.GetValue(user)?.ToString() ?? "null");
             }
 
-            var logins = await userManager.GetLoginsAsync(user);
+            var logins = userManager.GetLoginsAsync(user).Result;
             foreach (var l in logins)
             {
                 personalData.Add($"{l.LoginProvider} external login provider key", l.ProviderKey);
             }
 
-            Response.Headers.Add("Content-Disposition", "attachment; filename=PersonalData.json");
-            return new FileContentResult(JsonSerializer.SerializeToUtf8Bytes(personalData), "application/json");
+            var result = File(JsonSerializer.SerializeToUtf8Bytes(personalData), "application/json");
+            result.FileDownloadName = "PersonalData.json";
+            return result;
         }
     }
 }

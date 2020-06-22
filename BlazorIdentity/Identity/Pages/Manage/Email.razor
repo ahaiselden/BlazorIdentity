@@ -3,33 +3,54 @@
 @page "/Identity/Manage/Email"
 
 @using BlazorIdentity.Identity;
-@using Microsoft.AspNetCore.Authentication;
-@using Microsoft.AspNetCore.Http;
 @using Microsoft.AspNetCore.Identity;
 @using Microsoft.Extensions.Logging;
 @using Microsoft.AspNetCore.WebUtilities;
 @using System.ComponentModel.DataAnnotations;
 @using System.Text;
+@using System.Text.Encodings.Web;
 
 @inject UserManager<IdentityUser> _userManager;
 @inject NavigationManager NavigationManager;
-@inject SignInManager<IdentityUser> _signInManager;
-@inject ILogger<Identity.Pages.Login> _logger;
-@inject IHttpContextAccessor httpContextAccessor;
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject Microsoft.AspNetCore.Identity.UI.Services.IEmailSender _emailSender;
 
 <AuthorizeView Context="authContext">
     <Authorized>
+        <h4>Manage Email</h4>
 
         <StatusMessage Message="@StatusMessage"></StatusMessage>
 
         <div class="row">
             <div class="col-md-6">
-                <EditForm EditContext="editContext" OnSubmit="OnSubmit">
+                <EditForm Model="inputModel" Context="formContext">
                     <DataAnnotationsValidator />
                     <ValidationSummary />
-
-
-
+                    <div class="form-group">
+                        <label asp-for="Email"></label>
+                        @if (IsEmailConfirmed)
+                        {
+                            <div class="input-group">
+                                <input class="form-control" value="@EmailAddress" disabled />
+                                <div class="input-group-append">
+                                    <span class="input-group-text text-success font-weight-bold">✓</span>
+                                </div>
+                            </div>
+                        }
+                        else
+                        {
+                            <input asp-for="Email" class="form-control" disabled />
+                            <button id="email-verification" type="submit" @onclick="(async () => await SendVerificationEmail(formContext))" class="btn btn-link">Send verification email</button>
+                        }
+                    </div>
+                    <div class="form-group">
+                        <div class="form-group">
+                            New Email
+                            <InputText class="form-control" @bind-Value="inputModel.NewEmail"></InputText>
+                            <ValidationMessage For="@(() => inputModel.NewEmail)" />
+                        </div>
+                    </div>
+                    <button id="change-email-button" type="submit" @onclick="(async () => await ChangeEmail(formContext))" asp-page-handler="ChangeEmail" class="btn btn-primary">Change email</button>
                 </EditForm>
             </div>
         </div>
@@ -43,31 +64,119 @@
 @code {
     public string StatusMessage { get; set; }
 
-    public EditContext editContext { get; set; }
-
     public InputModel inputModel { get; set; }
+
+    public string Username { get; set; }
+
+    public string EmailAddress { get; set; }
+
+    public bool IsEmailConfirmed { get; set; }
 
     protected override async Task OnInitializedAsync()
     {
-        //editContext = new EditContext(inputModel);
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = await _userManager.GetUserAsync(authState.User);
+        if (user == null)
+        {
+            StatusMessage = $"Unable to load user with ID '{_userManager.GetUserId(authState.User)}'.";
+        }
+        else
+        {
+            await LoadAsync(user);
+        }
     }
 
-    private async void OnSubmit(EditContext editContext)
+    private async Task LoadAsync(IdentityUser user)
     {
-        if (!editContext.Validate())
-        {
+        var email = await _userManager.GetEmailAsync(user);
+        EmailAddress = email;
 
+        inputModel = new InputModel
+        {
+            NewEmail = email,
+        };
+
+        IsEmailConfirmed = await _userManager.IsEmailConfirmedAsync(user);
+    }
+
+    private async Task ChangeEmail(EditContext editContext)
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+
+        var user = await _userManager.GetUserAsync(authState.User);
+        if (user == null)
+        {
+            StatusMessage = $"Unable to load user with ID '{_userManager.GetUserId(authState.User)}'.";
         }
         else
         {
 
-        }
+            if (!editContext.Validate())
+            {
+                await LoadAsync(user);
+            }
+            else
+            {
+                var email = await _userManager.GetEmailAsync(user);
+                if (inputModel.NewEmail != email)
+                {
+                    var userId = await _userManager.GetUserIdAsync(user);
+                    var code = await _userManager.GenerateChangeEmailTokenAsync(user, inputModel.NewEmail);
 
-        editContext = new EditContext(inputModel);
+                    var callbackUrl = $"{NavigationManager.BaseUri}Identity/Account/ConfirmEmailChange/{userId}/{email}/{code}";
+
+                    await _emailSender.SendEmailAsync(
+                        inputModel.NewEmail,
+                        "Confirm your email",
+                        $"Please confirm your account by <a href='{HtmlEncoder.Default.Encode(callbackUrl)}'>clicking here</a>.");
+
+                    StatusMessage = "Confirmation link to change email sent. Please check your email.";
+                }
+            }
+
+            StatusMessage = "Your email is unchanged.";
+        }
+    }
+
+    private async Task SendVerificationEmail(EditContext editContext)
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+
+        var user = await _userManager.GetUserAsync(authState.User);
+        if (user == null)
+        {
+            StatusMessage = $"Unable to load user with ID '{_userManager.GetUserId(authState.User)}'.";
+        }
+        else
+        {
+            if (!editContext.Validate())
+            {
+                await LoadAsync(user);
+            }
+            else
+            {
+                var userId = await _userManager.GetUserIdAsync(user);
+                var email = await _userManager.GetEmailAsync(user);
+                var code = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+                code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(code));
+
+                var callbackUrl = $"{NavigationManager.BaseUri}Identity/Account/ConfirmEmail/{userId}/{email}/{code}";
+
+                await _emailSender.SendEmailAsync(
+                    email,
+                    "Confirm your email",
+                    $"Please confirm your account by <a href='{HtmlEncoder.Default.Encode(callbackUrl)}'>clicking here</a>.");
+
+                StatusMessage = "Verification email sent. Please check your email.";
+            }
+        }
     }
 
     public class InputModel
     {
-
+        [Required]
+        [EmailAddress]
+        [Display(Name = "New email")]
+        public string NewEmail { get; set; }
     }
 }

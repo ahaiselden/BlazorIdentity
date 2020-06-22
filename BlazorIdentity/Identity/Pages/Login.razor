@@ -13,7 +13,7 @@
 @inject NavigationManager NavigationManager;
 @inject SignInManager<IdentityUser> _signInManager;
 @inject ILogger<Identity.Pages.Login> _logger;
-@inject IHttpContextAccessor httpContextAccessor;
+@inject HttpClient httpClient;
 
 <title>Log in</title>
 
@@ -72,7 +72,7 @@ else
 @code {
     private string ErrorMessage { get; set; }
 
-    private IList<AuthenticationScheme> ExternalLogins { get; set; }
+    //private IList<AuthenticationScheme> ExternalLogins { get; set; }
 
     [Parameter]
     public string Failed { get; set; }
@@ -81,26 +81,20 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        try
-        {
-            inputModel = new InputModel();
+        inputModel = new InputModel();
 
-            ExternalLogins = (await _signInManager.GetExternalAuthenticationSchemesAsync()).ToList();
+        //ExternalLogins = (await _signInManager.GetExternalAuthenticationSchemesAsync()).ToList();
 
-            // Clear the existing external cookie to ensure a clean login process
-            await httpContextAccessor.HttpContext.SignOutAsync(IdentityConstants.ExternalScheme);
-        }
-        catch (Exception exception)
-        {
-
-        }
+        // Clear the existing external cookie to ensure a clean login process
+        await httpClient.GetAsync("/Identity/LogOut");
+        //await httpContextAccessor.HttpContext.SignOutAsync(IdentityConstants.ExternalScheme);
     }
 
-    private void OnExternalLoginClick(string providerName)
-    {
-        NavigationManager.NavigateTo($"/Identity/ExternalLogin/{providerName}");
-        return;
-    }
+    //private void OnExternalLoginClick(string providerName)
+    //{
+    //    NavigationManager.NavigateTo($"/Identity/ExternalLogin/{providerName}");
+    //    return;
+    //}
 
     public class InputModel
     {

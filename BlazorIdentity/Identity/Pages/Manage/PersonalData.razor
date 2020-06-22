@@ -15,22 +15,27 @@
 @inject NavigationManager NavigationManager;
 @inject SignInManager<IdentityUser> _signInManager;
 @inject ILogger<Identity.Pages.Login> _logger;
-@inject IHttpContextAccessor httpContextAccessor;
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject HttpClient httpClient;
 
 <AuthorizeView Context="authContext">
     <Authorized>
+        <h4>Personal Data</h4>
 
         <StatusMessage Message="@StatusMessage"></StatusMessage>
 
         <div class="row">
             <div class="col-md-6">
-                <EditForm EditContext="editContext" OnSubmit="OnSubmit">
-                    <DataAnnotationsValidator />
-                    <ValidationSummary />
-
-
-
+                <p>Your account contains personal data that you have given us. This page allows you to download or delete that data.</p>
+                <p>
+                    <strong>Deleting this data will permanently remove your account, and this cannot be recovered.</strong>
+                </p>
+                <EditForm Model="inputModel" OnSubmit="OnSubmit">
+                    <button class="btn btn-primary" type="submit">Download</button>
                 </EditForm>
+                <p>
+                    <a id="delete" href="/Identity/Manage/DeletePersonalData" class="btn btn-primary">Delete</a>
+                </p>
             </div>
         </div>
     </Authorized>
@@ -43,27 +48,23 @@
 @code {
     public string StatusMessage { get; set; }
 
-    public EditContext editContext { get; set; }
-
-    public InputModel inputModel { get; set; }
+    public InputModel inputModel { get; set; } = new InputModel();
 
     protected override async Task OnInitializedAsync()
     {
-        editContext = new EditContext(inputModel);
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+
+        var user = await _userManager.GetUserAsync(authState.User);
+        if (user == null)
+        {
+            StatusMessage = $"Unable to load user with ID '{_userManager.GetUserId(authState.User)}'.";
+        }
     }
 
     private async void OnSubmit(EditContext editContext)
     {
-        if (!editContext.Validate())
-        {
-
-        }
-        else
-        {
-
-        }
-
-        editContext = new EditContext(inputModel);
+        NavigationManager.NavigateTo("Identity/Manage/DownloadPersonalData", true);
+        //   httpClient.GetAsync("Identity/Manage/DownloadPersonalData");
     }
 
     public class InputModel

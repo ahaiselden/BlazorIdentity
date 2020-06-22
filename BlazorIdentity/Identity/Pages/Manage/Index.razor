@@ -15,7 +15,8 @@
 @inject NavigationManager NavigationManager;
 @inject SignInManager<IdentityUser> _signInManager;
 @inject ILogger<Identity.Pages.Login> _logger;
-@inject IHttpContextAccessor httpContextAccessor;
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject HttpClient httpClient;
 
 <AuthorizeView Context="authContext">
     <Authorized>
@@ -25,18 +26,21 @@
 
         <div class="row">
             <div class="col-md-6">
-                <EditForm EditContext="editContext" OnSubmit="OnSubmit">
-                    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+                <EditForm Model="inputModel" OnSubmit="OnSubmit">
+                    <DataAnnotationsValidator />
+                    <ValidationSummary />
+
                     <div class="form-group">
-                        <label asp-for="Username"></label>
-                        <input asp-for="Username" class="form-control" disabled />
+                        Username
+                        <input class="form-control" value="@Username" disabled />
                     </div>
+
                     <div class="form-group">
-                        <label>Phone Number</label>
-                        <input asp-for="Input.PhoneNumber" class="form-control" />
-                        <span asp-validation-for="Input.PhoneNumber" class="text-danger"></span>
+                        Phone number
+                        <InputText class="form-control" @bind-Value="inputModel.PhoneNumber"></InputText>
+                        <ValidationMessage For="@(() => inputModel.PhoneNumber)" />
                     </div>
-                    <button id="update-profile-button" type="submit" class="btn btn-primary">Save</button>
+                    <button type="submit" class="btn btn-primary">Save</button>
                 </EditForm>
             </div>
         </div>
@@ -50,27 +54,76 @@
 @code {
     public string StatusMessage { get; set; }
 
-    public EditContext editContext { get; set; }
+    public InputModel inputModel { get; set; } = new InputModel();
 
-    public InputModel inputModel { get; set; }
+    public string Username { get; set; }
 
     protected override async Task OnInitializedAsync()
     {
-        //editContext = new EditContext(inputModel);
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+
+        var user = await (_userManager.GetUserAsync(authState.User));
+
+        if (user == null)
+        {
+            StatusMessage = $"Unable to load user with ID '{_userManager.GetUserId(authState.User)}'.";
+        }
+        else
+        {
+            var userName = await _userManager.GetUserNameAsync(user);
+            var phoneNumber = await _userManager.GetPhoneNumberAsync(user);
+
+            inputModel = new InputModel
+            {
+                PhoneNumber = phoneNumber
+            };
+
+            Username = userName;
+        }
     }
 
     private async void OnSubmit(EditContext editContext)
     {
-        if (!editContext.Validate())
-        {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
 
+        var user = await _userManager.GetUserAsync(authState.User);
+        if (user == null)
+        {
+            StatusMessage = $"Unable to load user with ID '{_userManager.GetUserId(authState.User)}'.";
         }
         else
         {
+            if (!editContext.Validate())
+            {
 
+            }
+            else
+            {
+                var phoneNumber = await _userManager.GetPhoneNumberAsync(user);
+                if (inputModel.PhoneNumber != phoneNumber)
+                {
+                    var setPhoneResult = await _userManager.SetPhoneNumberAsync(user, inputModel.PhoneNumber);
+                    if (!setPhoneResult.Succeeded)
+                    {
+                        StatusMessage = "Unexpected error when trying to set phone number.";
+                    }
+                }
+
+                var result = await httpClient.GetAsync("/Identity/Manage/SignInRefresh");
+                if (result.IsSuccessStatusCode)
+                {
+                    StatusMessage = "Your profile has been updated";
+                }
+                else
+                {
+                    StatusMessage = "Unexpected error when trying to set phone number.";
+                }
+
+                StateHasChanged();
+            }
         }
 
-        ////editContext = new EditContext(inputModel);
+        editContext = new EditContext(inputModel);
     }
 
     public class InputModel

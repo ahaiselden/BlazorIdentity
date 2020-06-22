@@ -15,7 +15,7 @@
 @inject NavigationManager NavigationManager;
 @inject SignInManager<IdentityUser> _signInManager;
 @inject ILogger<Identity.Pages.Manage.DeletePersonalData> _logger;
-@inject IHttpContextAccessor httpContextAccessor;
+@inject AuthenticationStateProvider AuthenticationStateProvider
 
 <AuthorizeView Context="authContext">
     <Authorized>
@@ -57,10 +57,12 @@
 
     protected override async Task OnInitializedAsync()
     {
-        var user = await _userManager.GetUserAsync(httpContextAccessor.HttpContext.User);
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+
+        var user = await _userManager.GetUserAsync(authState.User);
         if (user == null)
         {
-            StatusMessage = $"Unable to load user with ID '{_userManager.GetUserId(httpContextAccessor.HttpContext.User)}'.";
+            StatusMessage = $"Unable to load user with ID '{_userManager.GetUserId(authState.User)}'.";
             return;
         }
 
@@ -71,10 +73,12 @@
 
     private async void OnSubmit(EditContext editContext)
     {
-        var user = await _userManager.GetUserAsync(httpContextAccessor.HttpContext.User);
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+
+        var user = await _userManager.GetUserAsync(authState.User);
         if (user == null)
         {
-            StatusMessage = $"Unable to load user with ID '{_userManager.GetUserId(httpContextAccessor.HttpContext.User)}'.";
+            StatusMessage = $"Unable to load user with ID '{_userManager.GetUserId(authState.User)}'.";
         }
 
         RequirePassword = await _userManager.HasPasswordAsync(user);

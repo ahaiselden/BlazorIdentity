@@ -15,7 +15,7 @@
 @inject NavigationManager NavigationManager;
 @inject SignInManager<IdentityUser> _signInManager;
 @inject ILogger<Identity.Pages.Login> _logger;
-@inject IHttpContextAccessor httpContextAccessor;
+@inject AuthenticationStateProvider AuthenticationStateProvider
 
 <AuthorizeView Context="authContext">
     <Authorized>
@@ -54,17 +54,19 @@
 
     protected override async Task OnInitializedAsync()
     {
-        var user = await _userManager.GetUserAsync(httpContextAccessor.HttpContext.User);
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+
+        var user = await _userManager.GetUserAsync(authState.User);
 
         if (user == null)
         {
-            StatusMessage = $"Unable to load user with ID '{_userManager.GetUserId(httpContextAccessor.HttpContext.User)}'.";
+            StatusMessage = $"Unable to load user with ID '{_userManager.GetUserId(authState.User)}'.";
         }
         else
         {
             if (!await _userManager.GetTwoFactorEnabledAsync(user))
             {
-                StatusMessage = $"Cannot disable 2FA for user with ID '{_userManager.GetUserId(httpContextAccessor.HttpContext.User)}' as it's not currently enabled.";
+                StatusMessage = $"Cannot disable 2FA for user with ID '{_userManager.GetUserId(authState.User)}' as it's not currently enabled.";
             }
         }
 
@@ -73,21 +75,23 @@
 
     private async void OnSubmit(EditContext editContext)
     {
-        var user = await _userManager.GetUserAsync(httpContextAccessor.HttpContext.User);
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+
+        var user = await _userManager.GetUserAsync(authState.User);
         if (user == null)
         {
-            StatusMessage = $"Unable to load user with ID '{_userManager.GetUserId(httpContextAccessor.HttpContext.User)}'.";
+            StatusMessage = $"Unable to load user with ID '{_userManager.GetUserId(authState.User)}'.";
         }
         else
         {
             var disable2faResult = await _userManager.SetTwoFactorEnabledAsync(user, false);
             if (!disable2faResult.Succeeded)
             {
-                StatusMessage = $"Unexpected error occurred disabling 2FA for user with ID '{_userManager.GetUserId(httpContextAccessor.HttpContext.User)}'.";
+                StatusMessage = $"Unexpected error occurred disabling 2FA for user with ID '{_userManager.GetUserId(authState.User)}'.";
             }
             else
             {
-                _logger.LogInformation("User with ID '{UserId}' has disabled 2fa.", _userManager.GetUserId(httpContextAccessor.HttpContext.User));
+                _logger.LogInformation("User with ID '{UserId}' has disabled 2fa.", _userManager.GetUserId(authState.User));
                 StatusMessage = "2fa has been disabled. You can reenable 2fa when you setup an authenticator app";
 
                 NavigationManager.NavigateTo("/Identity/Manage/TwoFactorAuthentication");

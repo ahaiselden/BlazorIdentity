@@ -15,10 +15,11 @@
 @inject NavigationManager NavigationManager;
 @inject SignInManager<IdentityUser> _signInManager;
 @inject ILogger<Identity.Pages.Login> _logger;
-@inject IHttpContextAccessor httpContextAccessor;
+@inject AuthenticationStateProvider AuthenticationStateProvider
 
 <AuthorizeView Context="authContext">
     <Authorized>
+        <h4>Manage Email</h4>
 
         <StatusMessage Message="@StatusMessage"></StatusMessage>
 
